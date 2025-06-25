@@ -1,0 +1,79 @@
+import tensorflow as tf
+import tensorflow_datasets as tfds
+
+dataset_name = "stanford_dogs"
+(data_train, data_test), ds_info = tfds.load(
+    dataset_name,
+    split=["train", "test"],
+    shuffle_files=True,
+    as_supervised=True,
+    with_info=True,
+)
+
+def preprocess_image(image, label):
+    image = tf.image.resize(image, (224, 224))  # Redimensiona para 224x224
+    image = tf.cast(image, tf.float32) / 255.0  # Normaliza os valores para [0, 1]
+    return image, label
+
+data_train = data_train.map(preprocess_image).batch(32).prefetch(tf.data.AUTOTUNE)
+data_test = data_test.map(preprocess_image).batch(32).prefetch(tf.data.AUTOTUNE)
+
+def preprocess_image(image, label):
+    image = tf.image.resize(image, (224, 224))  # Redimensiona para 224x224
+    image = tf.cast(image, tf.float32) / 255.0  # Normaliza os valores para [0, 1]
+    return image, label
+
+data_train = data_train.map(preprocess_image).batch(32).prefetch(tf.data.AUTOTUNE)
+data_test = data_test.map(preprocess_image).batch(32).prefetch(tf.data.AUTOTUNE)
+
+model = tf.keras.Sequential([
+    tf.keras.layers.Conv2D(32, (3, 3), activation='relu', input_shape=(224, 224, 3)),
+    tf.keras.layers.MaxPooling2D((2, 2)),
+    tf.keras.layers.Conv2D(64, (3, 3), activation='relu'),
+    tf.keras.layers.MaxPooling2D((2, 2)),
+    tf.keras.layers.Conv2D(128, (3, 3), activation='relu'),
+    tf.keras.layers.MaxPooling2D((2, 2)),
+    tf.keras.layers.Flatten(),
+    tf.keras.layers.Dense(128, activation='relu'),
+    tf.keras.layers.Dense(ds_info.features["label"].num_classes, activation='softmax')
+])
+
+model.compile(optimizer='adam',
+              loss='sparse_categorical_crossentropy',
+              metrics=['accuracy'])
+
+history = model.fit(data_train, epochs=10, validation_data=data_test)
+
+test_loss, test_accuracy = model.evaluate(data_test)
+print(f"Loss no conjunto de teste: {test_loss:.4f}")
+print(f"Acurácia no conjunto de teste: {test_accuracy:.4f}")
+
+model = tf.keras.Sequential([
+    tf.keras.layers.Conv2D(64, (3, 3), activation='relu', input_shape=(224, 224, 3)),
+    tf.keras.layers.MaxPooling2D((2, 2)),
+    tf.keras.layers.Conv2D(128, (3, 3), activation='relu'),
+    tf.keras.layers.MaxPooling2D((2, 2)),
+    tf.keras.layers.Conv2D(256, (3, 3), activation='relu'),
+    tf.keras.layers.MaxPooling2D((2, 2)),
+    tf.keras.layers.Flatten(),
+    tf.keras.layers.Dense(256, activation='relu'),
+    tf.keras.layers.Dropout(0.5),  # Dropout para evitar overfitting
+    tf.keras.layers.Dense(ds_info.features["label"].num_classes, activation='softmax')
+])
+
+import matplotlib.pyplot as plt
+
+plt.figure(figsize=(12, 4))
+plt.subplot(1, 2, 1)
+plt.plot(history.history['accuracy'], label='Acurácia Treino')
+plt.plot(history.history['val_accuracy'], label='Acurácia Validação')
+plt.legend()
+plt.title('Acurácia')
+
+plt.subplot(1, 2, 2)
+plt.plot(history.history['loss'], label='Perda Treino')
+plt.plot(history.history['val_loss'], label='Perda Validação')
+plt.legend()
+plt.title('Perda')
+
+plt.show()
